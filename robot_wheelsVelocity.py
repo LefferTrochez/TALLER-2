@@ -9,7 +9,14 @@ from std_msgs.msg import Float64
 global tiempo
 global pulse_count_A
 global pulse_count_B
-
+global listapula
+global listavela
+global listavelb
+listavela=[]
+listavelb=[]
+listapula=[]
+global listapulb
+listapulb=[]
 tiempo=0
 # Variables globales
 motorAPin2 = 15
@@ -82,18 +89,20 @@ class WheelsVelocityNode(Node):
             self.stop()
 
     def forward(self, speed,tiempo):
-        
+        global listapula,listapulb, listavela,listavelb
         if float(speed) != 0:
             print(" ")
             print("Forward: +" + str(speed))
             GPIO.output(motorAPin1, GPIO.LOW)
             GPIO.output(motorAPin2, GPIO.HIGH)
             motorA_PWM = GPIO.PWM(motorAPWMPin, 100)
-            motorA_PWM.start(speed+20)  
+            motorA_PWM.start(speed+20-1+14)  
             GPIO.output(motorBPin1, GPIO.LOW)
             GPIO.output(motorBPin2, GPIO.HIGH)
             motorB_PWM = GPIO.PWM(motorBPWMPin, 100)
-            motorB_PWM.start(speed+20+12)
+            motorB_PWM.start(speed+20+10+15)
+            listapula.append(pulse_count_A)
+            listapulb.append(pulse_count_B)
             GPIO.output(standbyPin, GPIO.HIGH)
             start_time = time.time()
             duration = tiempo
@@ -107,6 +116,8 @@ class WheelsVelocityNode(Node):
                     print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
                     print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
                     self.update_velocity(velocity_A, velocity_B, tiempo)
+                else:
+                    self.update_velocity(speed, speed, tiempo)
                 try:
                     while time.time() - start_time < duration1:
                         time.sleep(0.04)  # Pequeña pausa para reducir la carga de la CPU
@@ -126,7 +137,7 @@ class WheelsVelocityNode(Node):
             GPIO.output(motorBPin1, GPIO.HIGH)
             GPIO.output(motorBPin2, GPIO.LOW)
             motorB_PWM = GPIO.PWM(motorBPWMPin, 100)
-            motorB_PWM.start(speed+20+3)
+            motorB_PWM.start(speed+20+2+2)
             GPIO.output(standbyPin, GPIO.HIGH)
             start_time = time.time()
           
@@ -136,12 +147,15 @@ class WheelsVelocityNode(Node):
             
                 velocity_A = -(pulse_count_A / duration) * (wheel_circumference_A / encoder_resolution)
                 velocity_B = -(pulse_count_B / duration) * (wheel_circumference_B / encoder_resolution)
-                print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
-                print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
+                
                 if velocity_A < speed*(1.3) and velocity_B< speed*(1.3):
                     print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
                     print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
+            
                     self.update_velocity(velocity_A, velocity_B, tiempo)
+                else:
+                    self.update_velocity(speed, speed, tiempo)
+                    
                 try:
                     while time.time() - start_time < duration1:
                         time.sleep(0.04)  # Pequeña pausa para reducir la carga de la CPU
@@ -162,11 +176,11 @@ class WheelsVelocityNode(Node):
             GPIO.output(motorAPin1, GPIO.LOW)
             GPIO.output(motorAPin2, GPIO.HIGH)
             motorA_PWM = GPIO.PWM(motorAPWMPin, 100)
-            motorA_PWM.start(speed+20)  # Offset de velocidad para equilibrar con Motor B
+            motorA_PWM.start(speed*19/2)  # Offset de velocidad para equilibrar con Motor B
             GPIO.output(motorBPin1, GPIO.HIGH)
             GPIO.output(motorBPin2, GPIO.LOW)
             motorB_PWM = GPIO.PWM(motorBPWMPin, 100)
-            motorB_PWM.start(speed+20)
+            motorB_PWM.start(speed*19/2)
             GPIO.output(standbyPin, GPIO.HIGH)
             start_time = time.time()
             duration = tiempo
@@ -177,10 +191,14 @@ class WheelsVelocityNode(Node):
                 velocity_B = -(pulse_count_B / duration) * (wheel_circumference_B / encoder_resolution)
                 print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
                 print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
-                if velocity_A < speed*(1.3) and velocity_B< speed*(1.3):
+                if abs(velocity_A) < abs(speed)*(1.3) and abs(velocity_B)< abs(speed*(1.3)):
                     print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
                     print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
+                    print(f"Velocidad angular: {round((velocity_A-velocity_B)/19,3)} cm/s")
                     self.update_velocity(velocity_A, velocity_B, tiempo)
+                else:
+                    self.update_velocity(-speed*19/2, speed*19/2, tiempo)
+                    print(f"Velocidad angular: {round((velocity_A-velocity_B)/19,3)} cm/s")
 
                 try:
                     while time.time() - start_time < duration1:
@@ -199,11 +217,11 @@ class WheelsVelocityNode(Node):
             GPIO.output(motorAPin1, GPIO.HIGH)
             GPIO.output(motorAPin2, GPIO.LOW)
             motorA_PWM = GPIO.PWM(motorAPWMPin, 100)
-            motorA_PWM.start(speed+20+2)  # Offset de velocidad para equilibrar con Motor B
+            motorA_PWM.start(speed*19/2)  # Offset de velocidad para equilibrar con Motor B
             GPIO.output(motorBPin1, GPIO.LOW)
             GPIO.output(motorBPin2, GPIO.HIGH)
             motorB_PWM = GPIO.PWM(motorBPWMPin, 100)
-            motorB_PWM.start(speed+20)
+            motorB_PWM.start(speed*19/2)
             GPIO.output(standbyPin, GPIO.HIGH)
             start_time = time.time()
             duration = tiempo
@@ -213,10 +231,16 @@ class WheelsVelocityNode(Node):
                 print(pulse_count_A)
                 velocity_A = -(pulse_count_A / duration) * (wheel_circumference_A / encoder_resolution)
                 velocity_B = (pulse_count_B / duration) * (wheel_circumference_B / encoder_resolution)
-                if velocity_A < speed*(1.3) and velocity_B< speed*(1.3):
+                print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
+                print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
+                if abs(velocity_A*19/2) < abs(speed*(1.3)*19/2) and abs(velocity_B*19)< abs(speed*(1.3)*19/2):
                     print(f"Velocidad Motor A: {round(velocity_A,3)} cm/s")
                     print(f"Velocidad Motor B: {round(velocity_B,3)} cm/s")
+                    print(f"Velocidad angular: {round((velocity_A-velocity_B)/19,3)} cm/s")
                     self.update_velocity(velocity_A, velocity_B, tiempo)
+                else:
+                    self.update_velocity(speed*19/2, -speed*19/2, tiempo)
+                    print(f"Velocidad angular: {round((velocity_A-velocity_B)/19,3)} cm/s")
                 try:
                     while time.time() - start_time < duration1:
                         time.sleep(0.04)  # Pequeña pausa para reducir la carga de la CPU
@@ -240,6 +264,8 @@ class WheelsVelocityNode(Node):
         msg.layout.dim = [MultiArrayDimension(label='cmd_vel_time', size=3, stride=3)]
         msg.data=[motor1,motor2,tiempo]
         self.publisher_velocity.publish(msg)
+    
+
 
 
 def main(args=None):
