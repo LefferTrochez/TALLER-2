@@ -164,7 +164,10 @@ import math
 
 tiempo=0
 global lista
+global lista2
+lista2=[0,0]
 lista=[0,0]
+
 class PoseNode(Node):
     
     def __init__(self):
@@ -178,17 +181,28 @@ class PoseNode(Node):
         self.theta = 0
         self.velocidad1=0
         self.velocidad2=0
+        self.lineal=0
+        self.angular=0
         self.timer_period = 0.1  # Publicar la posición cada 0.1 segundos (ajuste según sea necesario)
         self.timer = self.create_timer(self.timer_period, self.publish_position)
 
     def velocity_callback(self, twist_msg):
-        global lista
+        global lista, lista2
         print(" ")
         
         delta_time = twist_msg.data[2] 
         lista.append(delta_time) # Suponiendo que los mensajes llegan cada 1 segundo
         self.velocidad1=twist_msg.data[0]
         self.velocidad2=twist_msg.data[1]
+        if twist_msg.data[0]!=0 and twist_msg.data[1]!=0:
+            if twist_msg.data[0]/abs(twist_msg.data[0])==twist_msg.data[1]/abs(twist_msg.data[1]):
+                if abs((twist_msg.data[1]+twist_msg.data[0]))/2<60:
+                    self.lineal=(twist_msg.data[1]+twist_msg.data[0])/2
+                self.angular=0
+            else:
+                self.lineal=0
+                self.angular=(( twist_msg.data[0]-twist_msg.data[1])/19)
+        print("angular   :" +str(self.angular)+"lineal   :" +str(self.lineal))
         R = 4.4
         w_r = twist_msg.data[0] / R
         w_l = twist_msg.data[1] / R
@@ -197,8 +211,12 @@ class PoseNode(Node):
         if lista[-2]>lista[-1]:
             lista[-2]=0
         print("resta: " + str(lista[-1]-lista[-2]))
-       
-        self.theta+= (( twist_msg.data[1]-twist_msg.data[0])/19)*(lista[-1]-lista[-2])        
+        lista2.append(lista[-1]-lista[-2])
+        if twist_msg.data[0] !=0 and twist_msg.data[1] !=0:
+            if twist_msg.data[0]/abs(twist_msg.data[0])<twist_msg.data[1]/abs(twist_msg.data[1]):
+                self.theta+= ((( twist_msg.data[1]-twist_msg.data[0]))/19)*(lista[-1]-lista[-2])*0.6543*0.9011   
+            elif twist_msg.data[0]/abs(twist_msg.data[0])>twist_msg.data[1]/abs(twist_msg.data[1]):     
+                self.theta+= ((( twist_msg.data[1]-twist_msg.data[0]))/19)*(lista[-1]-lista[-2])*0.6543*0.5009
         delta_y =0
         print("vel_r: "+str(round(w_r,3))+" ,     vel_l: "+str(round(w_l,3)))
         # Actualizar la pose global del robot
@@ -214,7 +232,7 @@ class PoseNode(Node):
     def publish_position(self):
         msg = Float32MultiArray()
         msg.layout.dim = [MultiArrayDimension(label='cmd_vel_time', size=4, stride=4)]
-        msg.data=[self.x,self.y,self.velocidad1,self.velocidad2]
+        msg.data=[self.x,self.y,self.lineal,self.angular]
         self.publisher_.publish(msg)
         
 def main(args=None):
